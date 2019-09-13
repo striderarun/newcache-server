@@ -1,0 +1,34 @@
+Application Overview
+——————————----------
+The application is built using two libraries:
+
+- Netty for building a TCP server (https://netty.io/)
+- Caffeine caching library (https://github.com/ben-manes/caffeine)
+
+I chose to leverage these two libraries in the interest of time and focussed on designing the overall system 
+including client-server protocol and integration between components. 
+
+System Design
+-------------
+The two supported commands are `get` and `set`. To handle these commands, a generic CommandHandler interface is defined.
+The set and get operations are supported by implementations of the CommandHandler interface.
+The CommandHandler interface defines how the command input will be parsed and processed.  
+A CommandHandlerFactory accepts the client command and returns the appropriate CommandHandler.
+
+The Set and Get CommandHandler implementations access the in-memory Caffeine cache through a Singleton wrapper that provides access to the cache operations.
+
+To account for the two-step operation for the set command where the client first sends the parameters and then sends the data block in the subsequent command,
+a BufferedCommandState is used to keep the set command state in memory while waiting for the data block.
+Once the data block is received in the subsequent command, the in-memory BufferedCommandState is flushed.
+The BufferedCommandState is kept in a ThreadLocal instance so that each client thread in a session maintains its own copy of the state.
+
+
+Improvements
+------------
+There is scope for a couple of improvements/enhancements here.
+
+- Using the Reactive version of Netty, (https://github.com/reactor/reactor-netty) can improve throughput when the number of incoming client connection scales upward and provides additional benefits such as Backpressure.
+
+- There are other alternatives to Caffeine as a caching library. Also, we can write our own custom cache implementation using Java concurrent collections like ConcurrentHashMap and ConcurrentLinkedQueue.
+We can compare the concurrent cahing performance of the various alternatives by performance testing. Performance testing can be done using the Java Microbenchmark Harness framework to compare the different implementations.
+
